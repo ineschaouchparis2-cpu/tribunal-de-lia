@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Le Tribunal de l'IA — Arbitre tes disputes</title>
+<script src="https://js.stripe.com/v3/"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #ffffff; --bg2: #f7f6f3; --bg3: #f0efe9;
+    --text: #1a1a18; --text2: #6b6b67; --text3: #9b9b96;
+    --border: rgba(0,0,0,0.12); --border2: rgba(0,0,0,0.22);
+    --purple50: #EEEDFE; --purple200: #AFA9EC; --purple400: #7F77DD; --purple800: #3C3489;
+    --radius-md: 8px; --radius-lg: 12px;
+    --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1c1a; --bg2: #252523; --bg3: #2e2e2b;
+      --text: #f0efe9; --text2: #a0a09a; --text3: #6b6b67;
+      --border: rgba(255,255,255,0.1); --border2: rgba(255,255,255,0.2);
+      --purple50: #26215C; --purple200: #534AB7; --purple800: #CECBF6;
+    }
+  }
+  body { font-family: var(--font); background: var(--bg3); color: var(--text); min-height: 100vh; padding: 2rem 1rem 4rem; }
+  .container { max-width: 620px; margin: 0 auto; }
+  header { text-align: center; margin-bottom: 2.5rem; }
+  .gavel { font-size: 40px; display: block; margin-bottom: 0.75rem; }
+  header h1 { font-size: 28px; font-weight: 600; letter-spacing: -0.5px; margin-bottom: 8px; }
+  header p { font-size: 15px; color: var(--text2); }
+  .card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 1.5rem; margin-bottom: 1rem; }
+  .field-label { font-size: 13px; color: var(--text2); margin-bottom: 6px; display: block; }
+  .field-label .hint { color: var(--text3); font-size: 12px; margin-left: 4px; }
+  .names-grid { display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; align-items: end; margin-bottom: 1.25rem; }
+  .vs-circle { width: 34px; height: 34px; border-radius: 50%; background: var(--purple50); color: var(--purple800); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; flex-shrink: 0; margin-bottom: 1px; }
+  input[type="text"] { width: 100%; height: 38px; font-size: 14px; padding: 0 12px; border-radius: var(--radius-md); border: 0.5px solid var(--border2); background: var(--bg); color: var(--text); font-family: var(--font); outline: none; transition: border-color 0.15s, box-shadow 0.15s; }
+  input[type="text"]:focus { border-color: var(--purple400); box-shadow: 0 0 0 3px rgba(127,119,221,0.15); }
+  textarea { width: 100%; min-height: 90px; font-size: 14px; padding: 10px 12px; border-radius: var(--radius-md); border: 0.5px solid var(--border2); background: var(--bg); color: var(--text); font-family: var(--font); line-height: 1.55; resize: vertical; outline: none; transition: border-color 0.15s, box-shadow 0.15s; }
+  textarea:focus { border-color: var(--purple400); box-shadow: 0 0 0 3px rgba(127,119,221,0.15); }
+  .field-group { margin-bottom: 1.25rem; }
+  .cats { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 1.25rem; }
+  .cat-btn { font-size: 13px; padding: 6px 14px; border-radius: 20px; border: 0.5px solid var(--border2); background: transparent; color: var(--text2); cursor: pointer; font-family: var(--font); transition: background 0.1s; }
+  .cat-btn.active { background: var(--purple50); color: var(--purple800); border-color: var(--purple200); font-weight: 500; }
+  .submit-btn { width: 100%; padding: 12px; font-size: 15px; font-weight: 500; border-radius: var(--radius-md); border: 0.5px solid var(--border2); background: transparent; color: var(--text); cursor: pointer; font-family: var(--font); transition: background 0.15s; }
+  .submit-btn:hover { background: var(--bg2); }
+  .submit-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+  .error { font-size: 13px; color: #A32D2D; margin-top: 8px; min-height: 18px; }
+  .loading { display: flex; align-items: center; gap: 8px; color: var(--text2); font-size: 14px; padding: 1.25rem 0; justify-content: center; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--purple400); animation: pulse 1.2s infinite; }
+  .dot:nth-child(2) { animation-delay: 0.2s; }
+  .dot:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes pulse { 0%,100%{opacity:0.25} 50%{opacity:1} }
+  .result-card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 1.5rem; margin-top: 1.5rem; }
+  .verdict-banner { background: var(--purple50); color: var(--purple800); border-radius: var(--radius-md); padding: 12px 16px; font-size: 15px; font-weight: 600; margin-bottom: 1.25rem; text-align: center; line-height: 1.4; }
+  .result-section { margin-bottom: 1rem; }
+  .result-section-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text3); margin-bottom: 4px; font-weight: 500; }
+  .result-section-text { font-size: 14px; color: var(--text); line-height: 1.65; }
+  .blurred-zone { position: relative; margin-top: 0.5rem; border-radius: var(--radius-md); overflow: hidden; }
+  .blurred-content { filter: blur(5px); user-select: none; pointer-events: none; opacity: 0.7; padding-bottom: 3rem; }
+  .paywall-overlay { position: absolute; bottom: 0; left: 0; right: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding: 1.5rem 1rem 1rem; background: linear-gradient(to bottom, transparent 0%, var(--bg) 45%); }
+  .paywall-label { font-size: 13px; color: var(--text2); margin-bottom: 10px; text-align: center; }
+  .pay-btn { display: flex; align-items: center; gap: 8px; padding: 11px 22px; font-size: 14px; font-weight: 600; border-radius: var(--radius-md); border: none; background: var(--purple400); color: #fff; cursor: pointer; font-family: var(--font); transition: background 0.15s; }
+  .pay-btn:hover { background: #534AB7; }
+  .modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; align-items: center; justify-content: center; padding: 1rem; }
+  .modal-bg.open { display: flex; }
+  .modal { background: var(--bg); border-radius: var(--radius-lg); padding: 1.75rem; width: 100%; max-width: 420px; }
+  .modal h2 { font-size: 18px; font-weight: 600; margin-bottom: 6px; }
+  .modal p { font-size: 13px; color: var(--text2); margin-bottom: 1.25rem; }
+  #card-element { border: 0.5px solid var(--border2); border-radius: var(--radius-md); padding: 12px; background: var(--bg); margin-bottom: 1rem; }
+  #card-errors { color: #A32D2D; font-size: 13px; margin-bottom: 10px; min-height: 18px; }
+  .modal-btns { display: flex; gap: 8px; }
+  .modal-pay-btn { flex: 1; padding: 11px; font-size: 14px; font-weight: 600; border-radius: var(--radius-md); border: none; background: var(--purple400); color: #fff; cursor: pointer; font-family: var(--font); }
+  .modal-pay-btn:hover { background: #534AB7; }
+  .modal-pay-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .modal-cancel { padding: 11px 16px; font-size: 14px; border-radius: var(--radius-md); border: 0.5px solid var(--border2); background: transparent; color: var(--text2); cursor: pointer; font-family: var(--font); }
+  .modal-cancel:hover { background: var(--bg2); }
+  .actions-row { display: flex; gap: 8px; margin-top: 1.25rem; border-top: 0.5px solid var(--border); padding-top: 1.25rem; }
+  .action-btn { flex: 1; padding: 9px; font-size: 13px; border-radius: var(--radius-md); border: 0.5px solid var(--border2); background: transparent; color: var(--text2); cursor: pointer; font-family: var(--font); transition: background 0.1s; }
+  .action-btn:hover { background: var(--bg2); color: var(--text); }
+  .footer { text-align: center; margin-top: 3rem; font-size: 12px; color: var(--text3); }
+  .success-badge { background: #E6F4EA; color: #1B5E20; border-radius: var(--radius-md); padding: 10px 14px; font-size: 13px; font-weight: 500; text-align: center; margin-bottom: 1rem; }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <span class="gavel">⚖️</span>
+    <h1>Le Tribunal de l'IA</h1>
+    <p>Décris ton conflit. L'IA tranche sans pitié.</p>
+  </header>
+
+  <div class="card">
+    <div class="cats">
+      <span class="field-label" style="width:100%;margin-bottom:0;">Type de dispute</span>
+      <button class="cat-btn active" data-cat="couple">Couple</button>
+      <button class="cat-btn" data-cat="amis">Amis</button>
+      <button class="cat-btn" data-cat="famille">Famille</button>
+      <button class="cat-btn" data-cat="collègues">Collègues</button>
+      <button class="cat-btn" data-cat="coloc">Coloc</button>
+    </div>
+    <div class="names-grid">
+      <div>
+        <label class="field-label" for="nameA">Personne A</label>
+        <input type="text" id="nameA" placeholder="Ton prénom" />
+      </div>
+      <div style="display:flex;align-items:center;padding-bottom:1px;">
+        <div class="vs-circle">vs</div>
+      </div>
+      <div>
+        <label class="field-label" for="nameB">Personne B</label>
+        <input type="text" id="nameB" placeholder="Leur prénom" />
+      </div>
+    </div>
+    <div class="field-group">
+      <label class="field-label" for="sideA">Version de A <span class="hint">(ta version)</span></label>
+      <textarea id="sideA" placeholder="Explique ton point de vue honnêtement..."></textarea>
+    </div>
+    <div class="field-group" style="margin-bottom:0.5rem;">
+      <label class="field-label" for="sideB">Version de B <span class="hint">(leur version)</span></label>
+      <textarea id="sideB" placeholder="Explique leur point de vue..."></textarea>
+    </div>
+    <div id="errorMsg" class="error"></div>
+    <button class="submit-btn" id="submitBtn" onclick="arbitrate()">Rendre le verdict ⚖️</button>
+  </div>
+
+  <div id="loadingDiv" style="display:none;">
+    <div class="loading">
+      <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+      <span>Le tribunal délibère...</span>
+    </div>
+  </div>
+
+  <div id="resultDiv" style="display:none;">
+    <div class="result-card">
+      <div class="verdict-banner" id="verdictBanner"></div>
+      <div class="result-section">
+        <div class="result-section-label">Aperçu</div>
+        <div class="result-section-text" id="previewText"></div>
+      </div>
+      <div class="blurred-zone" id="paywallZone">
+        <div class="blurred-content">
+          <div class="result-section">
+            <div class="result-section-label">Analyse complète</div>
+            <div class="result-section-text" id="fullAnalysis"></div>
+          </div>
+          <div class="result-section">
+            <div class="result-section-label">Sentence pour le perdant</div>
+            <div class="result-section-text" id="fullSentence"></div>
+          </div>
+          <div class="result-section">
+            <div class="result-section-label">Conseil du tribunal</div>
+            <div class="result-section-text" id="fullConseil"></div>
+          </div>
+        </div>
+        <div class="paywall-overlay">
+          <p class="paywall-label">Le verdict complet est scellé.</p>
+          <button class="pay-btn" onclick="openPayModal()">🔒 Voir le verdict complet — 0,99€</button>
+        </div>
+      </div>
+      <div id="unlockedSection" style="display:none;">
+        <div class="success-badge">✅ Verdict déverrouillé — paiement confirmé</div>
+        <div class="result-section">
+          <div class="result-section-label">Analyse complète</div>
+          <div class="result-section-text" id="fullAnalysisU"></div>
+        </div>
+        <div class="result-section">
+          <div class="result-section-label">Sentence pour le perdant</div>
+          <div class="result-section-text" id="fullSentenceU"></div>
+        </div>
+        <div class="result-section">
+          <div class="result-section-label">Conseil du tribunal</div>
+          <div class="result-section-text" id="fullConseilU"></div>
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="action-btn" id="copyBtn" onclick="copyResult()">Copier le verdict</button>
+        <button class="action-btn" onclick="resetApp()">Nouveau litige</button>
+      </div>
+    </div>
+  </div>
+  <div class="footer">Jugements rendus par une IA — pour le fun, pas pour le barreau.</div>
+</div>
+
+<!-- Stripe modal -->
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <h2>Débloquer le verdict</h2>
+    <p>Paiement sécurisé par Stripe — 0,99€ une seule fois.</p>
+    <div id="card-element"></div>
+    <div id="card-errors"></div>
+    <div class="modal-btns">
+      <button class="modal-cancel" onclick="closePayModal()">Annuler</button>
+      <button class="modal-pay-btn" id="modalPayBtn" onclick="submitPayment()">Payer 0,99€</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// Clé publique Stripe (celle-ci peut rester dans le code frontend)
+const STRIPE_PUBLIC_KEY = 'pk_test_51TO1jcCSgRmD7YD6Vzz7ABOZGznIBP9Z56JHiI7tEcBF47tnPHPVjUMIcxdpKrLU6HzeCC1Kd3YWPa95uXbxcpYN00SnIn3Tvo';
+const stripe = Stripe(STRIPE_PUBLIC_KEY);
+const elements = stripe.elements();
+const cardEl = elements.create('card', {
+  style: { base: { fontSize: '15px', color: '#1a1a18', '::placeholder': { color: '#9b9b96' } } }
+});
+let cardMounted = false;
+let selectedCat = 'couple';
+let parsed = {};
+let currentClientSecret = null;
+
+document.querySelectorAll('.cat-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    selectedCat = btn.dataset.cat;
+  });
+});
+
+function extract(text, key) {
+  const m = text.match(new RegExp(key + '\\s*:\\s*([\\s\\S]*?)(?=\\n[A-Z]+\\s*:|$)', 'i'));
+  return m ? m[1].trim() : '';
+}
+
+async function arbitrate() {
+  const nameA = document.getElementById('nameA').value.trim() || 'Personne A';
+  const nameB = document.getElementById('nameB').value.trim() || 'Personne B';
+  const sideA = document.getElementById('sideA').value.trim();
+  const sideB = document.getElementById('sideB').value.trim();
+  const err = document.getElementById('errorMsg');
+
+  if (!sideA || !sideB) { err.textContent = 'Remplis les deux versions pour que le tribunal puisse trancher.'; return; }
+  err.textContent = '';
+
+  document.getElementById('submitBtn').disabled = true;
+  document.getElementById('loadingDiv').style.display = 'block';
+  document.getElementById('resultDiv').style.display = 'none';
+
+  const prompt = `Tu es un juge humoristique, direct et sans filtre. Tranche ce conflit clairement, avec humour.
+
+Type de relation : ${selectedCat}
+${nameA} dit : "${sideA}"
+${nameB} dit : "${sideB}"
+
+Réponds EXACTEMENT dans ce format (sans markdown, sans astérisques) :
+
+VERDICT : [Prénom du gagnant] a raison.
+
+APERCU : [Une seule phrase percutante qui donne envie d'en savoir plus, sans tout dévoiler]
+
+ANALYSE : [2-3 phrases d'analyse complète avec humour]
+
+SENTENCE : [Une phrase drôle sur ce que le perdant doit faire ou admettre]
+
+CONSEIL : [Une phrase de sagesse pratique pour que ça ne recommence pas]`;
+
+  try {
+    const res = await fetch('/api/verdict', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt })
+    });
+    const data = await res.json();
+    const text = data.content?.[0]?.text || '';
+
+    parsed = {
+      verdict: extract(text, 'VERDICT'),
+      apercu: extract(text, 'APERCU'),
+      analyse: extract(text, 'ANALYSE'),
+      sentence: extract(text, 'SENTENCE'),
+      conseil: extract(text, 'CONSEIL'),
+      nameA, nameB
+    };
+
+    document.getElementById('verdictBanner').textContent = 'Verdict : ' + parsed.verdict;
+    document.getElementById('previewText').textContent = parsed.apercu;
+    document.getElementById('fullAnalysis').textContent = parsed.analyse;
+    document.getElementById('fullSentence').textContent = parsed.sentence;
+    document.getElementById('fullConseil').textContent = parsed.conseil;
+    document.getElementById('paywallZone').style.display = 'block';
+    document.getElementById('unlockedSection').style.display = 'none';
+    document.getElementById('resultDiv').style.display = 'block';
+  } catch(e) {
+    err.textContent = 'Erreur de connexion. Vérifie que server.js est bien lancé.';
+  }
+
+  document.getElementById('loadingDiv').style.display = 'none';
+  document.getElementById('submitBtn').disabled = false;
+}
+
+async function openPayModal() {
+  document.getElementById('modalBg').classList.add('open');
+  if (!cardMounted) { cardEl.mount('#card-element'); cardMounted = true; }
+  cardEl.on('change', e => { document.getElementById('card-errors').textContent = e.error ? e.error.message : ''; });
+
+  // Crée le PaymentIntent côté serveur
+  try {
+    const res = await fetch('/api/create-payment', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+    const data = await res.json();
+    currentClientSecret = data.clientSecret;
+  } catch(e) {
+    document.getElementById('card-errors').textContent = 'Erreur de connexion au serveur de paiement.';
+  }
+}
+
+function closePayModal() { document.getElementById('modalBg').classList.remove('open'); }
+
+async function submitPayment() {
+  if (!currentClientSecret) {
+    document.getElementById('card-errors').textContent = 'Erreur : paiement non initialisé. Réessaie.';
+    return;
+  }
+  const btn = document.getElementById('modalPayBtn');
+  btn.disabled = true; btn.textContent = 'Traitement...';
+
+  const { paymentIntent, error } = await stripe.confirmCardPayment(currentClientSecret, {
+    payment_method: { card: cardEl }
+  });
+
+  if (error) {
+    document.getElementById('card-errors').textContent = error.message;
+    btn.disabled = false; btn.textContent = 'Payer 0,99€';
+    return;
+  }
+
+  // Vérifie côté serveur que le paiement est bien passé
+  try {
+    const verify = await fetch('/api/verify-payment', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ paymentIntentId: paymentIntent.id })
+    });
+    const result = await verify.json();
+    if (result.success) {
+      unlockVerdict();
+      closePayModal();
+    } else {
+      document.getElementById('card-errors').textContent = 'Paiement non confirmé. Contacte le support.';
+      btn.disabled = false; btn.textContent = 'Payer 0,99€';
+    }
+  } catch(e) {
+    document.getElementById('card-errors').textContent = 'Erreur de vérification. Contacte le support.';
+    btn.disabled = false; btn.textContent = 'Payer 0,99€';
+  }
+}
+
+function unlockVerdict() {
+  document.getElementById('paywallZone').style.display = 'none';
+  document.getElementById('fullAnalysisU').textContent = parsed.analyse;
+  document.getElementById('fullSentenceU').textContent = parsed.sentence;
+  document.getElementById('fullConseilU').textContent = parsed.conseil;
+  document.getElementById('unlockedSection').style.display = 'block';
+}
+
+function copyResult() {
+  const unlocked = document.getElementById('unlockedSection').style.display !== 'none';
+  let t = `⚖️ Verdict du Tribunal de l'IA\n${parsed.nameA} vs ${parsed.nameB}\n\nVERDICT : ${parsed.verdict}\n\nAPERÇU : ${parsed.apercu}`;
+  if (unlocked) t += `\n\nANALYSE : ${parsed.analyse}\n\nSENTENCE : ${parsed.sentence}\n\nCONSEIL : ${parsed.conseil}`;
+  navigator.clipboard.writeText(t).then(() => {
+    const b = document.getElementById('copyBtn');
+    b.textContent = 'Copié !';
+    setTimeout(() => b.textContent = 'Copier le verdict', 2000);
+  });
+}
+
+function resetApp() {
+  ['sideA','sideB','nameA','nameB'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('resultDiv').style.display = 'none';
+  document.getElementById('errorMsg').textContent = '';
+  parsed = {};
+  currentClientSecret = null;
+}
+</script>
+</body>
+</html>
