@@ -1,0 +1,12 @@
+{
+  "name": "tribunal-de-lia",
+  "version": "1.0.0",
+  "description": "Le Tribunal de l'IA — Arbitre tes disputes",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
