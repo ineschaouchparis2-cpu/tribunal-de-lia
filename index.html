@@ -168,7 +168,6 @@
 
 <script>
 const STRIPE_LINK = 'https://buy.stripe.com/test_dRmeVc10PbJe3Pi2XQ28800';
-const ANTHROPIC_KEY = 'REMPLACE_PAR_TA_CLE_ANTHROPIC'; // sk-ant-...
 
 let selectedCat = 'couple';
 let parsed = {};
@@ -181,7 +180,6 @@ document.querySelectorAll('.cat-btn').forEach(btn => {
   });
 });
 
-// Vérifie si l'utilisateur revient après paiement
 window.addEventListener('load', () => {
   const params = new URLSearchParams(window.location.search);
   if (params.get('paye') === 'oui') {
@@ -232,19 +230,10 @@ SENTENCE : [Une phrase drôle sur ce que le perdant doit faire ou admettre]
 CONSEIL : [Une phrase de sagesse pratique pour que ça ne recommence pas]`;
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await fetch('/api/verdict', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': ANTHROPIC_KEY,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1000,
-        messages: [{ role: 'user', content: prompt }]
-      })
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt })
     });
     const data = await res.json();
     const text = data.content?.[0]?.text || '';
@@ -260,13 +249,12 @@ CONSEIL : [Une phrase de sagesse pratique pour que ça ne recommence pas]`;
 
     sessionStorage.setItem('tribunal_parsed', JSON.stringify(parsed));
 
-    // Lien Stripe avec redirection retour sur le site après paiement
-    const returnUrl = window.location.href.split('?')[0] + '?paye=oui';
+    const returnUrl = window.location.origin + window.location.pathname + '?paye=oui';
     document.getElementById('payLink').href = STRIPE_LINK + '?success_url=' + encodeURIComponent(returnUrl);
 
     restoreResult();
   } catch(e) {
-    err.textContent = 'Erreur de connexion. Réessaie.';
+    err.textContent = 'Erreur de connexion au serveur.';
   }
 
   document.getElementById('loadingDiv').style.display = 'none';
