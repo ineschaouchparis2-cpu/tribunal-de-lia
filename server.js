@@ -87,6 +87,7 @@ const server = http.createServer(async (req, res) => {
         'line_items[0][price_data][currency]': 'eur',
         'line_items[0][price_data][product_data][name]': 'Verdict complet — Tribunal du Web',
         'line_items[0][price_data][unit_amount]': '99',
+        'line_items[0][quantity]': '1',
         'mode': 'payment',
         'success_url': `${origin}/?paid=${pendingId}`,
         'cancel_url': `${origin}/`
