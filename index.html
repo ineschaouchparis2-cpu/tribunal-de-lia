@@ -205,14 +205,31 @@ document.querySelectorAll('.cat-btn').forEach(btn => {
   });
 });
 
-window.addEventListener('load', () => {
+window.addEventListener('load', async () => {
   const params = new URLSearchParams(window.location.search);
-  if (params.get('paye') === 'oui') {
-    const saved = localStorage.getItem('tribunal_parsed');
+  const token = params.get('token');
+  if (token) {
+    const saved = localStorage.getItem('tribunal_pending');
     if (saved) {
-      parsed = JSON.parse(saved);
-      restoreResult();
-      unlockVerdict();
+      // Vérifie le token auprès du serveur
+      try {
+        const res = await fetch('/api/verify-token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token })
+        });
+        const data = await res.json();
+        if (data.valid) {
+          parsed = JSON.parse(saved);
+          localStorage.removeItem('tribunal_pending');
+          window.history.replaceState({}, '', window.location.pathname);
+          await generateAndShowVerdict();
+        } else {
+          document.getElementById('errorMsg').textContent = 'Token invalide ou expiré. Recommence le paiement.';
+        }
+      } catch(e) {
+        console.error(e);
+      }
     }
   }
 });
@@ -269,13 +286,16 @@ CONSEIL : [2-3 phrases de sagesse pratique et bienveillante pour que ça ne reco
       analyse: extract(text, 'ANALYSE'),
       sentence: extract(text, 'SENTENCE'),
       conseil: extract(text, 'CONSEIL'),
-      nameA, nameB
+      nameA, nameB,
+      sideA, sideB,
+      cat: selectedCat
     };
 
-    localStorage.setItem('tribunal_parsed', JSON.stringify(parsed));
+    // Sauvegarde les données en attente de paiement
+    localStorage.setItem('tribunal_pending', JSON.stringify(parsed));
 
-    const returnUrl = window.location.origin + window.location.pathname + '?paye=oui';
-    document.getElementById('payLink').href = STRIPE_LINK + '?success_url=' + encodeURIComponent(returnUrl);
+    const returnUrl = window.location.origin + window.location.pathname;
+    document.getElementById('payLink').href = STRIPE_LINK + '?success_url=' + encodeURIComponent(returnUrl + '?token={CHECKOUT_SESSION_ID}');
 
     restoreResult();
   } catch(e) {
@@ -284,6 +304,57 @@ CONSEIL : [2-3 phrases de sagesse pratique et bienveillante pour que ça ne reco
 
   document.getElementById('loadingDiv').style.display = 'none';
   document.getElementById('submitBtn').disabled = false;
+}
+
+async function generateAndShowVerdict() {
+  document.getElementById('loadingDiv').style.display = 'block';
+  document.getElementById('errorMsg').textContent = '';
+
+  const prompt = `Tu es un juge humoristique, direct et sans filtre. Tranche ce conflit clairement, avec humour et précision.
+
+Type de relation : ${parsed.cat || selectedCat}
+${parsed.nameA} dit : "${parsed.sideA}"
+${parsed.nameB} dit : "${parsed.sideB}"
+
+Réponds EXACTEMENT dans ce format (sans markdown, sans astérisques) :
+
+VERDICT : [Prénom du gagnant] a raison.
+
+ANALYSE : [4-5 phrases d'analyse approfondie et humoristique]
+
+SENTENCE : [2-3 phrases drôles et créatives sur ce que le perdant doit faire]
+
+CONSEIL : [2-3 phrases de sagesse pratique adaptées à leur relation]`;
+
+  try {
+    const res = await fetch('/api/verdict', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt, token: 'webhook_verified' })
+    });
+    const data = await res.json();
+    const text = data.content?.[0]?.text || '';
+    parsed.verdict  = extract(text, 'VERDICT');
+    parsed.analyse  = extract(text, 'ANALYSE');
+    parsed.sentence = extract(text, 'SENTENCE');
+    parsed.conseil  = extract(text, 'CONSEIL');
+    document.getElementById('loadingDiv').style.display = 'none';
+    showVerdictPage();
+  } catch(e) {
+    document.getElementById('loadingDiv').style.display = 'none';
+    document.getElementById('errorMsg').textContent = 'Erreur lors de la génération du verdict.';
+  }
+}
+
+function showVerdictPage() {
+  document.getElementById('verdictNames').textContent = parsed.nameA + ' vs ' + parsed.nameB;
+  document.getElementById('verdictCat').textContent = 'Litige ' + (parsed.cat || selectedCat);
+  document.getElementById('verdictDecision').textContent = parsed.verdict;
+  document.getElementById('fullAnalysisU').textContent = parsed.analyse;
+  document.getElementById('fullSentenceU').textContent = parsed.sentence;
+  document.getElementById('fullConseilU').textContent = parsed.conseil;
+  document.getElementById('unlockedSection').style.display = 'block';
+  document.getElementById('resultDiv').style.display = 'none';
 }
 
 function restoreResult() {
@@ -300,7 +371,7 @@ function restoreResult() {
 function unlockVerdict() {
   document.getElementById('paywallZone').style.display = 'none';
   document.getElementById('verdictNames').textContent = parsed.nameA + ' vs ' + parsed.nameB;
-  document.getElementById('verdictCat').textContent = 'Litige ' + selectedCat;
+  document.getElementById('verdictCat').textContent = 'Litige ' + (parsed.cat || selectedCat);
   document.getElementById('verdictDecision').textContent = parsed.verdict;
   document.getElementById('fullAnalysisU').textContent = parsed.analyse;
   document.getElementById('fullSentenceU').textContent = parsed.sentence;
@@ -309,9 +380,8 @@ function unlockVerdict() {
 }
 
 function copyResult() {
-  const unlocked = document.getElementById('unlockedSection').style.display !== 'none';
-  let t = `⚖️ Verdict du Tribunal du Web\n${parsed.nameA} vs ${parsed.nameB}\n\nVERDICT : ${parsed.verdict}\n\nAPERÇU : ${parsed.apercu}`;
-  if (unlocked) t += `\n\nANALYSE : ${parsed.analyse}\n\nSENTENCE : ${parsed.sentence}\n\nCONSEIL : ${parsed.conseil}`;
+  let t = `⚖️ Verdict du Tribunal du Web\n${parsed.nameA} vs ${parsed.nameB}\n\nVERDICT : ${parsed.verdict}`;
+  t += `\n\nANALYSE : ${parsed.analyse}\n\nSENTENCE : ${parsed.sentence}\n\nCONSEIL : ${parsed.conseil}`;
   navigator.clipboard.writeText(t).then(() => {
     const b = document.getElementById('copyBtn');
     b.textContent = 'Copié !';
@@ -322,9 +392,10 @@ function copyResult() {
 function resetApp() {
   ['sideA','sideB','nameA','nameB'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('resultDiv').style.display = 'none';
+  document.getElementById('unlockedSection').style.display = 'none';
   document.getElementById('errorMsg').textContent = '';
   parsed = {};
-  localStorage.removeItem('tribunal_parsed');
+  localStorage.removeItem('tribunal_pending');
   window.history.replaceState({}, '', window.location.pathname);
 }
 </script>
