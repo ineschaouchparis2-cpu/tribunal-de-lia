@@ -26,7 +26,7 @@ const server = http.createServer(async (req, res) => {
     return res.end();
   }
 
-  if (req.method === 'GET' && req.url === '/') {
+  if (req.method === 'GET' && !req.url.startsWith('/api')) {
     const html = fs.readFileSync(path.join(__dirname, 'index.html'));
     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
     return res.end(html);
