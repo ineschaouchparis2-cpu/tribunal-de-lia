@@ -64,6 +64,20 @@
   .action-btn:hover { background: var(--bg2); color: var(--text); }
   .success-badge { background: #E6F4EA; color: #1B5E20; border-radius: var(--radius-md); padding: 10px 14px; font-size: 13px; font-weight: 500; text-align: center; margin-bottom: 1rem; }
   .footer { text-align: center; margin-top: 3rem; font-size: 12px; color: var(--text3); }
+  .verdict-page { background: var(--bg); border: 2px solid var(--purple400); border-radius: var(--radius-lg); padding: 2rem; margin-top: 1.5rem; position: relative; overflow: hidden; }
+  .verdict-page::before { content: '⚖️'; position: absolute; top: -20px; right: -20px; font-size: 120px; opacity: 0.04; }
+  .verdict-page-header { text-align: center; border-bottom: 2px solid var(--purple50); padding-bottom: 1.25rem; margin-bottom: 1.5rem; }
+  .verdict-page-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--text3); font-weight: 600; margin-bottom: 8px; }
+  .verdict-page-names { font-size: 20px; font-weight: 700; color: var(--text); letter-spacing: -0.3px; margin-bottom: 6px; }
+  .verdict-page-cat { font-size: 12px; color: var(--text3); }
+  .verdict-decision { background: var(--purple400); color: #fff; border-radius: var(--radius-md); padding: 16px 20px; text-align: center; margin-bottom: 1.5rem; }
+  .verdict-decision-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.8; margin-bottom: 6px; }
+  .verdict-decision-text { font-size: 20px; font-weight: 700; letter-spacing: -0.3px; }
+  .verdict-section { margin-bottom: 1.5rem; padding-bottom: 1.5rem; border-bottom: 0.5px solid var(--border); }
+  .verdict-section:last-of-type { border-bottom: none; margin-bottom: 0.5rem; }
+  .verdict-section-title { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--purple400); font-weight: 600; margin-bottom: 8px; }
+  .verdict-section-body { font-size: 15px; color: var(--text); line-height: 1.75; }
+  .verdict-seal { text-align: center; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 0.5px solid var(--border); font-size: 11px; color: var(--text3); font-style: italic; }
 </style>
 </head>
 <body>
@@ -143,23 +157,34 @@
         </div>
       </div>
       <div id="unlockedSection" style="display:none;">
-        <div class="success-badge">✅ Verdict déverrouillé</div>
-        <div class="result-section">
-          <div class="result-section-label">Analyse complète</div>
-          <div class="result-section-text" id="fullAnalysisU"></div>
+        <div class="verdict-page">
+          <div class="verdict-page-header">
+            <div class="verdict-page-title">🏛️ Jugement officiel — Tribunal du Web</div>
+            <div class="verdict-page-names" id="verdictNames"></div>
+            <div class="verdict-page-cat" id="verdictCat"></div>
+          </div>
+          <div class="verdict-decision">
+            <div class="verdict-decision-label">Le tribunal a statué</div>
+            <div class="verdict-decision-text" id="verdictDecision"></div>
+          </div>
+          <div class="verdict-section">
+            <div class="verdict-section-title">📋 Analyse du tribunal</div>
+            <div class="verdict-section-body" id="fullAnalysisU"></div>
+          </div>
+          <div class="verdict-section">
+            <div class="verdict-section-title">⚡ Sentence pour le perdant</div>
+            <div class="verdict-section-body" id="fullSentenceU"></div>
+          </div>
+          <div class="verdict-section">
+            <div class="verdict-section-title">💡 Conseil du tribunal</div>
+            <div class="verdict-section-body" id="fullConseilU"></div>
+          </div>
+          <div class="verdict-seal">Jugement rendu définitivement par le Tribunal du Web · Non susceptible d'appel</div>
         </div>
-        <div class="result-section">
-          <div class="result-section-label">Sentence pour le perdant</div>
-          <div class="result-section-text" id="fullSentenceU"></div>
+        <div class="actions-row">
+          <button class="action-btn" id="copyBtn" onclick="copyResult()">Copier le verdict</button>
+          <button class="action-btn" onclick="resetApp()">Nouveau litige</button>
         </div>
-        <div class="result-section">
-          <div class="result-section-label">Conseil du tribunal</div>
-          <div class="result-section-text" id="fullConseilU"></div>
-        </div>
-      </div>
-      <div class="actions-row">
-        <button class="action-btn" id="copyBtn" onclick="copyResult()">Copier le verdict</button>
-        <button class="action-btn" onclick="resetApp()">Nouveau litige</button>
       </div>
     </div>
   </div>
@@ -211,7 +236,7 @@ async function arbitrate() {
   document.getElementById('loadingDiv').style.display = 'block';
   document.getElementById('resultDiv').style.display = 'none';
 
-  const prompt = `Tu es un juge humoristique, direct et sans filtre. Tranche ce conflit clairement, avec humour.
+  const prompt = `Tu es un juge humoristique, direct et sans filtre. Tranche ce conflit clairement, avec humour et précision.
 
 Type de relation : ${selectedCat}
 ${nameA} dit : "${sideA}"
@@ -221,13 +246,13 @@ Réponds EXACTEMENT dans ce format (sans markdown, sans astérisques) :
 
 VERDICT : [Prénom du gagnant] a raison.
 
-APERCU : [Une seule phrase percutante qui donne envie d'en savoir plus, sans tout dévoiler]
+APERCU : [Une phrase percutante et intrigante qui donne envie d'en savoir plus, sans tout dévoiler]
 
-ANALYSE : [2-3 phrases d'analyse complète avec humour]
+ANALYSE : [4-5 phrases d'analyse approfondie et humoristique. Décortique les arguments des deux côtés, pointe les incohérences, identifie qui a tort et pourquoi avec des exemples concrets tirés de ce qu'ils ont dit]
 
-SENTENCE : [Une phrase drôle sur ce que le perdant doit faire ou admettre]
+SENTENCE : [2-3 phrases drôles et créatives sur ce que le perdant doit faire ou admettre concrètement]
 
-CONSEIL : [Une phrase de sagesse pratique pour que ça ne recommence pas]`;
+CONSEIL : [2-3 phrases de sagesse pratique et bienveillante pour que ça ne recommence pas, adaptées à leur type de relation]`;
 
   try {
     const res = await fetch('/api/verdict', {
@@ -274,6 +299,9 @@ function restoreResult() {
 
 function unlockVerdict() {
   document.getElementById('paywallZone').style.display = 'none';
+  document.getElementById('verdictNames').textContent = parsed.nameA + ' vs ' + parsed.nameB;
+  document.getElementById('verdictCat').textContent = 'Litige ' + selectedCat;
+  document.getElementById('verdictDecision').textContent = parsed.verdict;
   document.getElementById('fullAnalysisU').textContent = parsed.analyse;
   document.getElementById('fullSentenceU').textContent = parsed.sentence;
   document.getElementById('fullConseilU').textContent = parsed.conseil;
