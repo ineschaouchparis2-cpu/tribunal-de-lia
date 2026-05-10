@@ -183,7 +183,7 @@ document.querySelectorAll('.cat-btn').forEach(btn => {
 window.addEventListener('load', () => {
   const params = new URLSearchParams(window.location.search);
   if (params.get('paye') === 'oui') {
-    const saved = sessionStorage.getItem('tribunal_parsed');
+    const saved = localStorage.getItem('tribunal_parsed');
     if (saved) {
       parsed = JSON.parse(saved);
       restoreResult();
@@ -247,7 +247,7 @@ CONSEIL : [Une phrase de sagesse pratique pour que ça ne recommence pas]`;
       nameA, nameB
     };
 
-    sessionStorage.setItem('tribunal_parsed', JSON.stringify(parsed));
+    localStorage.setItem('tribunal_parsed', JSON.stringify(parsed));
 
     const returnUrl = window.location.origin + window.location.pathname + '?paye=oui';
     document.getElementById('payLink').href = STRIPE_LINK + '?success_url=' + encodeURIComponent(returnUrl);
@@ -296,7 +296,7 @@ function resetApp() {
   document.getElementById('resultDiv').style.display = 'none';
   document.getElementById('errorMsg').textContent = '';
   parsed = {};
-  sessionStorage.removeItem('tribunal_parsed');
+  localStorage.removeItem('tribunal_parsed');
   window.history.replaceState({}, '', window.location.pathname);
 }
 </script>
