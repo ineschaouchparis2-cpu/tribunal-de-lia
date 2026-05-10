@@ -105,6 +105,34 @@ const server = http.createServer(async (req, res) => {
     return res.end(JSON.stringify({ valid }));
   }
 
+  // Génère l'aperçu (gratuit, sans token)
+  if (req.method === 'POST' && req.url === '/api/preview') {
+    const body = await readBody(req);
+    const { prompt } = JSON.parse(body.toString());
+    try {
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': ANTHROPIC_API_KEY,
+          'anthropic-version': '2023-06-01'
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1500,
+          messages: [{ role: 'user', content: prompt }]
+        })
+      });
+      const data = await response.json();
+      res.writeHead(200, { ...CORS, 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(data));
+    } catch (e) {
+      res.writeHead(500, { ...CORS, 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: e.message }));
+    }
+    return;
+  }
+
   // Génère le verdict via Claude
   if (req.method === 'POST' && req.url === '/api/verdict') {
     const body = await readBody(req);

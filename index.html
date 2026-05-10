@@ -192,7 +192,7 @@
 </div>
 
 <script>
-const STRIPE_LINK = 'https://buy.stripe.com/test_dRmeVc10PbJe3Pi2XQ28800';
+const STRIPE_LINK = 'https://buy.stripe.com/aFa3cv6PCfn89bJeJE3cc00';
 
 let selectedCat = 'couple';
 let parsed = {};
@@ -272,7 +272,7 @@ SENTENCE : [2-3 phrases drôles et créatives sur ce que le perdant doit faire o
 CONSEIL : [2-3 phrases de sagesse pratique et bienveillante pour que ça ne recommence pas, adaptées à leur type de relation]`;
 
   try {
-    const res = await fetch('/api/verdict', {
+    const res = await fetch('/api/preview', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ prompt })
