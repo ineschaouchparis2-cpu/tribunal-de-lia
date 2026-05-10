@@ -57,13 +57,9 @@
   .blurred-content { filter: blur(6px); user-select: none; pointer-events: none; opacity: 0.7; padding-bottom: 4rem; }
   .paywall-overlay { position: absolute; bottom: 0; left: 0; right: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding: 2rem 1rem 1rem; background: linear-gradient(to bottom, transparent 0%, var(--bg) 45%); }
   .paywall-label { font-size: 13px; color: var(--text2); margin-bottom: 10px; text-align: center; }
-  .pay-btn { display: flex; align-items: center; gap: 8px; padding: 11px 22px; font-size: 14px; font-weight: 600; border-radius: var(--radius-md); border: none; background: var(--purple400); color: #fff; cursor: pointer; font-family: var(--font); text-decoration: none; }
+  .pay-btn { display: flex; align-items: center; gap: 8px; padding: 11px 22px; font-size: 14px; font-weight: 600; border-radius: var(--radius-md); border: none; background: var(--purple400); color: #fff; cursor: pointer; font-family: var(--font); }
   .pay-btn:hover { background: #534AB7; }
-  .actions-row { display: flex; gap: 8px; margin-top: 1.25rem; border-top: 0.5px solid var(--border); padding-top: 1.25rem; }
-  .action-btn { flex: 1; padding: 9px; font-size: 13px; border-radius: var(--radius-md); border: 0.5px solid var(--border2); background: transparent; color: var(--text2); cursor: pointer; font-family: var(--font); }
-  .action-btn:hover { background: var(--bg2); color: var(--text); }
-  .success-badge { background: #E6F4EA; color: #1B5E20; border-radius: var(--radius-md); padding: 10px 14px; font-size: 13px; font-weight: 500; text-align: center; margin-bottom: 1rem; }
-  .footer { text-align: center; margin-top: 3rem; font-size: 12px; color: var(--text3); }
+  .pay-btn:disabled { opacity: 0.5; cursor: not-allowed; }
   .verdict-page { background: var(--bg); border: 2px solid var(--purple400); border-radius: var(--radius-lg); padding: 2rem; margin-top: 1.5rem; position: relative; overflow: hidden; }
   .verdict-page::before { content: '⚖️'; position: absolute; top: -20px; right: -20px; font-size: 120px; opacity: 0.04; }
   .verdict-page-header { text-align: center; border-bottom: 2px solid var(--purple50); padding-bottom: 1.25rem; margin-bottom: 1.5rem; }
@@ -78,6 +74,10 @@
   .verdict-section-title { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--purple400); font-weight: 600; margin-bottom: 8px; }
   .verdict-section-body { font-size: 15px; color: var(--text); line-height: 1.75; }
   .verdict-seal { text-align: center; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 0.5px solid var(--border); font-size: 11px; color: var(--text3); font-style: italic; }
+  .actions-row { display: flex; gap: 8px; margin-top: 1.25rem; }
+  .action-btn { flex: 1; padding: 9px; font-size: 13px; border-radius: var(--radius-md); border: 0.5px solid var(--border2); background: transparent; color: var(--text2); cursor: pointer; font-family: var(--font); }
+  .action-btn:hover { background: var(--bg2); color: var(--text); }
+  .footer { text-align: center; margin-top: 3rem; font-size: 12px; color: var(--text3); }
 </style>
 </head>
 <body>
@@ -88,7 +88,7 @@
     <p>Décris ton conflit. Notre juge tranche sans pitié.</p>
   </header>
 
-  <div class="card">
+  <div class="card" id="formCard">
     <div class="cats">
       <span class="field-label" style="width:100%;margin-bottom:0;">Type de dispute</span>
       <button class="cat-btn active" data-cat="couple">Couple</button>
@@ -119,83 +119,79 @@
       <textarea id="sideB" placeholder="Explique leur point de vue..."></textarea>
     </div>
     <div id="errorMsg" class="error"></div>
-    <button class="submit-btn" id="submitBtn" onclick="arbitrate()">Rendre le verdict ⚖️</button>
+    <button class="submit-btn" id="submitBtn" onclick="submitForm()">Rendre le verdict ⚖️</button>
   </div>
 
   <div id="loadingDiv" style="display:none;">
     <div class="loading">
       <div class="dot"></div><div class="dot"></div><div class="dot"></div>
-      <span>Le tribunal délibère...</span>
+      <span id="loadingText">Le tribunal délibère...</span>
     </div>
   </div>
 
-  <div id="resultDiv" style="display:none;">
+  <div id="previewDiv" style="display:none;">
     <div class="result-card">
       <div class="verdict-banner" id="verdictBanner"></div>
       <div class="result-section">
         <div class="result-section-label">Aperçu</div>
         <div class="result-section-text" id="previewText"></div>
       </div>
-      <div class="blurred-zone" id="paywallZone">
+      <div class="blurred-zone">
         <div class="blurred-content">
           <div class="result-section">
             <div class="result-section-label">Analyse complète</div>
-            <div class="result-section-text" id="fullAnalysis"></div>
+            <div class="result-section-text">Le tribunal a analysé votre conflit en détail et a identifié plusieurs éléments clés qui permettent de trancher clairement cette dispute.</div>
           </div>
           <div class="result-section">
             <div class="result-section-label">Sentence pour le perdant</div>
-            <div class="result-section-text" id="fullSentence"></div>
-          </div>
-          <div class="result-section">
-            <div class="result-section-label">Conseil du tribunal</div>
-            <div class="result-section-text" id="fullConseil"></div>
+            <div class="result-section-text">Le perdant devra s'acquitter d'une sentence humoristique mais juste, prononcée solennellement par le tribunal.</div>
           </div>
         </div>
         <div class="paywall-overlay">
           <p class="paywall-label">Le verdict complet est scellé.</p>
-          <a class="pay-btn" id="payLink" href="#">🔒 Voir le verdict complet — 0,99€</a>
-        </div>
-      </div>
-      <div id="unlockedSection" style="display:none;">
-        <div class="verdict-page">
-          <div class="verdict-page-header">
-            <div class="verdict-page-title">🏛️ Jugement officiel — Tribunal du Web</div>
-            <div class="verdict-page-names" id="verdictNames"></div>
-            <div class="verdict-page-cat" id="verdictCat"></div>
-          </div>
-          <div class="verdict-decision">
-            <div class="verdict-decision-label">Le tribunal a statué</div>
-            <div class="verdict-decision-text" id="verdictDecision"></div>
-          </div>
-          <div class="verdict-section">
-            <div class="verdict-section-title">📋 Analyse du tribunal</div>
-            <div class="verdict-section-body" id="fullAnalysisU"></div>
-          </div>
-          <div class="verdict-section">
-            <div class="verdict-section-title">⚡ Sentence pour le perdant</div>
-            <div class="verdict-section-body" id="fullSentenceU"></div>
-          </div>
-          <div class="verdict-section">
-            <div class="verdict-section-title">💡 Conseil du tribunal</div>
-            <div class="verdict-section-body" id="fullConseilU"></div>
-          </div>
-          <div class="verdict-seal">Jugement rendu définitivement par le Tribunal du Web · Non susceptible d'appel</div>
-        </div>
-        <div class="actions-row">
-          <button class="action-btn" id="copyBtn" onclick="copyResult()">Copier le verdict</button>
-          <button class="action-btn" onclick="resetApp()">Nouveau litige</button>
+          <button class="pay-btn" id="payBtn" onclick="goToPayment()">🔒 Voir le verdict complet — 0,99€</button>
         </div>
       </div>
     </div>
   </div>
+
+  <div id="verdictDiv" style="display:none;">
+    <div class="verdict-page">
+      <div class="verdict-page-header">
+        <div class="verdict-page-title">🏛️ Jugement officiel — Tribunal du Web</div>
+        <div class="verdict-page-names" id="verdictNames"></div>
+        <div class="verdict-page-cat" id="verdictCat"></div>
+      </div>
+      <div class="verdict-decision">
+        <div class="verdict-decision-label">Le tribunal a statué</div>
+        <div class="verdict-decision-text" id="verdictDecision"></div>
+      </div>
+      <div class="verdict-section">
+        <div class="verdict-section-title">📋 Analyse du tribunal</div>
+        <div class="verdict-section-body" id="verdictAnalyse"></div>
+      </div>
+      <div class="verdict-section">
+        <div class="verdict-section-title">⚡ Sentence pour le perdant</div>
+        <div class="verdict-section-body" id="verdictSentence"></div>
+      </div>
+      <div class="verdict-section">
+        <div class="verdict-section-title">💡 Conseil du tribunal</div>
+        <div class="verdict-section-body" id="verdictConseil"></div>
+      </div>
+      <div class="verdict-seal">Jugement rendu définitivement par le Tribunal du Web · Non susceptible d'appel</div>
+    </div>
+    <div class="actions-row">
+      <button class="action-btn" id="copyBtn" onclick="copyVerdict()">Copier le verdict</button>
+      <button class="action-btn" onclick="resetApp()">Nouveau litige</button>
+    </div>
+  </div>
+
   <div class="footer">Jugements rendus par le Tribunal du Web — pour le fun, pas pour le barreau.</div>
 </div>
 
 <script>
-const STRIPE_LINK = 'https://buy.stripe.com/aFa3cv6PCfn89bJeJE3cc00';
-
 let selectedCat = 'couple';
-let parsed = {};
+let pending = {};
 
 document.querySelectorAll('.cat-btn').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -205,41 +201,60 @@ document.querySelectorAll('.cat-btn').forEach(btn => {
   });
 });
 
-window.addEventListener('load', async () => {
-  const params = new URLSearchParams(window.location.search);
-  const token = params.get('token');
-  if (token) {
-    const saved = localStorage.getItem('tribunal_pending');
-    if (saved) {
-      // Vérifie le token auprès du serveur
-      try {
-        const res = await fetch('/api/verify-token', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token })
-        });
-        const data = await res.json();
-        if (data.valid) {
-          parsed = JSON.parse(saved);
-          localStorage.removeItem('tribunal_pending');
-          window.history.replaceState({}, '', window.location.pathname);
-          await generateAndShowVerdict();
-        } else {
-          document.getElementById('errorMsg').textContent = 'Token invalide ou expiré. Recommence le paiement.';
-        }
-      } catch(e) {
-        console.error(e);
-      }
-    }
-  }
-});
-
 function extract(text, key) {
   const m = text.match(new RegExp(key + '\\s*:\\s*([\\s\\S]*?)(?=\\n[A-Z]+\\s*:|$)', 'i'));
   return m ? m[1].trim() : '';
 }
 
-async function arbitrate() {
+function showLoading(text) {
+  document.getElementById('loadingText').textContent = text || 'Le tribunal délibère...';
+  document.getElementById('loadingDiv').style.display = 'block';
+}
+
+function hideLoading() {
+  document.getElementById('loadingDiv').style.display = 'none';
+}
+
+// Au chargement : vérifie si retour après paiement
+window.addEventListener('load', async () => {
+  const params = new URLSearchParams(window.location.search);
+  const paidId = params.get('paid');
+  if (paidId) {
+    window.history.replaceState({}, '', window.location.pathname);
+    const saved = localStorage.getItem('tribunal_pending');
+    if (!saved) return;
+    pending = JSON.parse(saved);
+
+    showLoading('Vérification du paiement...');
+
+    // Vérifie le paiement auprès du serveur
+    let paid = false;
+    for (let i = 0; i < 5; i++) {
+      try {
+        const r = await fetch('/api/check-payment', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pendingId: paidId })
+        });
+        const d = await r.json();
+        if (d.paid) { paid = true; break; }
+      } catch(e) {}
+      await new Promise(r => setTimeout(r, 2000));
+    }
+
+    if (!paid) {
+      hideLoading();
+      document.getElementById('errorMsg').textContent = 'Paiement non confirmé. Contacte le support.';
+      return;
+    }
+
+    // Génère le verdict complet
+    showLoading('Génération du verdict complet...');
+    await generateFullVerdict(paidId);
+  }
+});
+
+async function submitForm() {
   const nameA = document.getElementById('nameA').value.trim() || 'Personne A';
   const nameB = document.getElementById('nameB').value.trim() || 'Personne B';
   const sideA = document.getElementById('sideA').value.trim();
@@ -250,138 +265,125 @@ async function arbitrate() {
   err.textContent = '';
 
   document.getElementById('submitBtn').disabled = true;
-  document.getElementById('loadingDiv').style.display = 'block';
-  document.getElementById('resultDiv').style.display = 'none';
+  showLoading('Le tribunal délibère...');
 
-  const prompt = `Tu es un juge humoristique, direct et sans filtre. Tranche ce conflit clairement, avec humour et précision.
+  const previewPrompt = `Tu es un juge humoristique. Donne SEULEMENT le verdict en une ligne et un aperçu accrocheur d'une phrase.
 
 Type de relation : ${selectedCat}
 ${nameA} dit : "${sideA}"
 ${nameB} dit : "${sideB}"
 
-Réponds EXACTEMENT dans ce format (sans markdown, sans astérisques) :
-
+Format EXACT (sans rien d'autre) :
 VERDICT : [Prénom du gagnant] a raison.
-
-APERCU : [Une phrase percutante et intrigante qui donne envie d'en savoir plus, sans tout dévoiler]
-
-ANALYSE : [4-5 phrases d'analyse approfondie et humoristique. Décortique les arguments des deux côtés, pointe les incohérences, identifie qui a tort et pourquoi avec des exemples concrets tirés de ce qu'ils ont dit]
-
-SENTENCE : [2-3 phrases drôles et créatives sur ce que le perdant doit faire ou admettre concrètement]
-
-CONSEIL : [2-3 phrases de sagesse pratique et bienveillante pour que ça ne recommence pas, adaptées à leur type de relation]`;
+APERCU : [Une phrase intrigante qui donne envie d'en savoir plus]`;
 
   try {
     const res = await fetch('/api/preview', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt })
+      body: JSON.stringify({ prompt: previewPrompt })
     });
     const data = await res.json();
     const text = data.content?.[0]?.text || '';
 
-    parsed = {
+    pending = { nameA, nameB, sideA, sideB, cat: selectedCat,
       verdict: extract(text, 'VERDICT'),
-      apercu: extract(text, 'APERCU'),
-      analyse: extract(text, 'ANALYSE'),
-      sentence: extract(text, 'SENTENCE'),
-      conseil: extract(text, 'CONSEIL'),
-      nameA, nameB,
-      sideA, sideB,
-      cat: selectedCat
+      apercu: extract(text, 'APERCU')
     };
 
-    // Sauvegarde les données en attente de paiement
-    localStorage.setItem('tribunal_pending', JSON.stringify(parsed));
+    const pendingId = crypto.randomUUID();
+    pending.id = pendingId;
+    localStorage.setItem('tribunal_pending', JSON.stringify(pending));
 
-    const returnUrl = window.location.origin + window.location.pathname;
-    document.getElementById('payLink').href = STRIPE_LINK + '?success_url=' + encodeURIComponent(returnUrl + '?token={CHECKOUT_SESSION_ID}');
+    document.getElementById('verdictBanner').textContent = 'Verdict : ' + pending.verdict;
+    document.getElementById('previewText').textContent = pending.apercu;
+    document.getElementById('payBtn').dataset.pendingId = pendingId;
 
-    restoreResult();
+    hideLoading();
+    document.getElementById('previewDiv').style.display = 'block';
   } catch(e) {
     err.textContent = 'Erreur de connexion au serveur.';
+    hideLoading();
   }
-
-  document.getElementById('loadingDiv').style.display = 'none';
   document.getElementById('submitBtn').disabled = false;
 }
 
-async function generateAndShowVerdict() {
-  document.getElementById('loadingDiv').style.display = 'block';
-  document.getElementById('errorMsg').textContent = '';
+async function goToPayment() {
+  const btn = document.getElementById('payBtn');
+  btn.disabled = true;
+  btn.textContent = 'Redirection...';
 
-  const prompt = `Tu es un juge humoristique, direct et sans filtre. Tranche ce conflit clairement, avec humour et précision.
+  const pendingId = pending.id;
 
-Type de relation : ${parsed.cat || selectedCat}
-${parsed.nameA} dit : "${parsed.sideA}"
-${parsed.nameB} dit : "${parsed.sideB}"
+  try {
+    const res = await fetch('/api/create-checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pendingId })
+    });
+    const data = await res.json();
+    if (data.url) {
+      window.location.href = data.url;
+    } else {
+      throw new Error(data.error || 'Erreur');
+    }
+  } catch(e) {
+    document.getElementById('errorMsg').textContent = 'Erreur de paiement : ' + e.message;
+    btn.disabled = false;
+    btn.textContent = '🔒 Voir le verdict complet — 0,99€';
+  }
+}
+
+async function generateFullVerdict(pendingId) {
+  const fullPrompt = `Tu es un juge humoristique, direct et sans filtre. Tranche ce conflit clairement, avec humour et précision.
+
+Type de relation : ${pending.cat}
+${pending.nameA} dit : "${pending.sideA}"
+${pending.nameB} dit : "${pending.sideB}"
 
 Réponds EXACTEMENT dans ce format (sans markdown, sans astérisques) :
 
 VERDICT : [Prénom du gagnant] a raison.
 
-ANALYSE : [4-5 phrases d'analyse approfondie et humoristique]
+ANALYSE : [4-5 phrases d'analyse approfondie et humoristique. Décortique les arguments des deux côtés.]
 
-SENTENCE : [2-3 phrases drôles et créatives sur ce que le perdant doit faire]
+SENTENCE : [2-3 phrases drôles et créatives sur ce que le perdant doit faire.]
 
-CONSEIL : [2-3 phrases de sagesse pratique adaptées à leur relation]`;
+CONSEIL : [2-3 phrases de sagesse pratique adaptées à leur relation.]`;
 
   try {
     const res = await fetch('/api/verdict', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt, token: 'webhook_verified' })
+      body: JSON.stringify({ prompt: fullPrompt, pendingId })
     });
     const data = await res.json();
+    if (data.error) throw new Error(data.error);
     const text = data.content?.[0]?.text || '';
-    parsed.verdict  = extract(text, 'VERDICT');
-    parsed.analyse  = extract(text, 'ANALYSE');
-    parsed.sentence = extract(text, 'SENTENCE');
-    parsed.conseil  = extract(text, 'CONSEIL');
-    document.getElementById('loadingDiv').style.display = 'none';
-    showVerdictPage();
+
+    document.getElementById('verdictNames').textContent = pending.nameA + ' vs ' + pending.nameB;
+    document.getElementById('verdictCat').textContent = 'Litige ' + pending.cat;
+    document.getElementById('verdictDecision').textContent = extract(text, 'VERDICT');
+    document.getElementById('verdictAnalyse').textContent = extract(text, 'ANALYSE');
+    document.getElementById('verdictSentence').textContent = extract(text, 'SENTENCE');
+    document.getElementById('verdictConseil').textContent = extract(text, 'CONSEIL');
+
+    localStorage.removeItem('tribunal_pending');
+    hideLoading();
+    document.getElementById('formCard').style.display = 'none';
+    document.getElementById('verdictDiv').style.display = 'block';
   } catch(e) {
-    document.getElementById('loadingDiv').style.display = 'none';
-    document.getElementById('errorMsg').textContent = 'Erreur lors de la génération du verdict.';
+    hideLoading();
+    document.getElementById('errorMsg').textContent = 'Erreur : ' + e.message;
   }
 }
 
-function showVerdictPage() {
-  document.getElementById('verdictNames').textContent = parsed.nameA + ' vs ' + parsed.nameB;
-  document.getElementById('verdictCat').textContent = 'Litige ' + (parsed.cat || selectedCat);
-  document.getElementById('verdictDecision').textContent = parsed.verdict;
-  document.getElementById('fullAnalysisU').textContent = parsed.analyse;
-  document.getElementById('fullSentenceU').textContent = parsed.sentence;
-  document.getElementById('fullConseilU').textContent = parsed.conseil;
-  document.getElementById('unlockedSection').style.display = 'block';
-  document.getElementById('resultDiv').style.display = 'none';
-}
-
-function restoreResult() {
-  document.getElementById('verdictBanner').textContent = 'Verdict : ' + parsed.verdict;
-  document.getElementById('previewText').textContent = parsed.apercu;
-  document.getElementById('fullAnalysis').textContent = parsed.analyse;
-  document.getElementById('fullSentence').textContent = parsed.sentence;
-  document.getElementById('fullConseil').textContent = parsed.conseil;
-  document.getElementById('paywallZone').style.display = 'block';
-  document.getElementById('unlockedSection').style.display = 'none';
-  document.getElementById('resultDiv').style.display = 'block';
-}
-
-function unlockVerdict() {
-  document.getElementById('paywallZone').style.display = 'none';
-  document.getElementById('verdictNames').textContent = parsed.nameA + ' vs ' + parsed.nameB;
-  document.getElementById('verdictCat').textContent = 'Litige ' + (parsed.cat || selectedCat);
-  document.getElementById('verdictDecision').textContent = parsed.verdict;
-  document.getElementById('fullAnalysisU').textContent = parsed.analyse;
-  document.getElementById('fullSentenceU').textContent = parsed.sentence;
-  document.getElementById('fullConseilU').textContent = parsed.conseil;
-  document.getElementById('unlockedSection').style.display = 'block';
-}
-
-function copyResult() {
-  let t = `⚖️ Verdict du Tribunal du Web\n${parsed.nameA} vs ${parsed.nameB}\n\nVERDICT : ${parsed.verdict}`;
-  t += `\n\nANALYSE : ${parsed.analyse}\n\nSENTENCE : ${parsed.sentence}\n\nCONSEIL : ${parsed.conseil}`;
+function copyVerdict() {
+  const t = `⚖️ Verdict du Tribunal du Web\n${pending.nameA} vs ${pending.nameB}\n\n` +
+    `VERDICT : ${document.getElementById('verdictDecision').textContent}\n\n` +
+    `ANALYSE : ${document.getElementById('verdictAnalyse').textContent}\n\n` +
+    `SENTENCE : ${document.getElementById('verdictSentence').textContent}\n\n` +
+    `CONSEIL : ${document.getElementById('verdictConseil').textContent}`;
   navigator.clipboard.writeText(t).then(() => {
     const b = document.getElementById('copyBtn');
     b.textContent = 'Copié !';
@@ -391,12 +393,12 @@ function copyResult() {
 
 function resetApp() {
   ['sideA','sideB','nameA','nameB'].forEach(id => document.getElementById(id).value = '');
-  document.getElementById('resultDiv').style.display = 'none';
-  document.getElementById('unlockedSection').style.display = 'none';
+  document.getElementById('previewDiv').style.display = 'none';
+  document.getElementById('verdictDiv').style.display = 'none';
+  document.getElementById('formCard').style.display = 'block';
   document.getElementById('errorMsg').textContent = '';
-  parsed = {};
+  pending = {};
   localStorage.removeItem('tribunal_pending');
-  window.history.replaceState({}, '', window.location.pathname);
 }
 </script>
 </body>
