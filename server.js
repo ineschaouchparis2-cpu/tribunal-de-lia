@@ -9,7 +9,7 @@ const STRIPE_SECRET_KEY     = process.env.STRIPE_SECRET_KEY;
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
 const PORT                  = process.env.PORT || 3000;
 
-// Tokens valides après paiement confirmé (1h)
+// Tokens valides aprÃ¨s paiement confirmÃ© (1h)
 const validTokens = new Map();
 
 function generateToken() {
@@ -76,7 +76,7 @@ const server = http.createServer(async (req, res) => {
     return res.end(html);
   }
 
-  // Crée une session Stripe Checkout
+  // CrÃ©e une session Stripe Checkout
   if (req.method === 'POST' && req.url === '/api/create-checkout') {
     const body = await readBody(req);
     const { pendingId } = JSON.parse(body.toString());
@@ -85,7 +85,7 @@ const server = http.createServer(async (req, res) => {
       const session = await stripePost('/v1/checkout/sessions', {
         'payment_method_types[0]': 'card',
         'line_items[0][price_data][currency]': 'eur',
-        'line_items[0][price_data][product_data][name]': 'Verdict complet — Tribunal du Web',
+        'line_items[0][price_data][product_data][name]': 'Verdict complet â€” Tribunal du Web',
         'line_items[0][price_data][unit_amount]': '99',
         'line_items[0][quantity]': '1',
         'mode': 'payment',
@@ -102,7 +102,7 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // Webhook Stripe — confirme le paiement
+  // Webhook Stripe â€” confirme le paiement
   if (req.method === 'POST' && req.url === '/webhook') {
     const body = await readBody(req);
     const sig = req.headers['stripe-signature'];
@@ -116,24 +116,62 @@ const server = http.createServer(async (req, res) => {
       if (match) {
         const pendingId = match[1];
         validTokens.set(pendingId, Date.now() + 60 * 60 * 1000);
-        console.log('Paiement confirmé pour:', pendingId);
+        console.log('Paiement confirmÃ© pour:', pendingId);
       }
     }
     res.writeHead(200); return res.end('OK');
   }
 
-  // Vérifie si un pendingId est payé
+  // VÃ©rifie si une session Stripe est payÃ©e directement via l'API
   if (req.method === 'POST' && req.url === '/api/check-payment') {
     const body = await readBody(req);
     const { pendingId } = JSON.parse(body.toString());
+
+    // D'abord vÃ©rifie le token local (si webhook a dÃ©jÃ  traitÃ©)
     const expiry = validTokens.get(pendingId);
-    const valid = expiry && Date.now() < expiry;
-    res.writeHead(200, { ...CORS, 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ paid: !!valid }));
+    if (expiry && Date.now() < expiry) {
+      res.writeHead(200, { ...CORS, 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ paid: true }));
+    }
+
+    // Sinon vÃ©rifie directement auprÃ¨s de Stripe
+    try {
+      const sessions = await new Promise((resolve, reject) => {
+        const options = {
+          hostname: 'api.stripe.com',
+          path: `/v1/checkout/sessions?limit=10`,
+          method: 'GET',
+          headers: { 'Authorization': 'Bearer ' + STRIPE_SECRET_KEY }
+        };
+        const req2 = https.request(options, res2 => {
+          let data = '';
+          res2.on('data', c => data += c);
+          res2.on('end', () => resolve(JSON.parse(data)));
+        });
+        req2.on('error', reject);
+        req2.end();
+      });
+
+      // Cherche une session avec success_url contenant pendingId et statut paid
+      const paid = sessions.data?.some(s =>
+        s.payment_status === 'paid' &&
+        s.success_url?.includes(pendingId)
+      );
+
+      if (paid) {
+        validTokens.set(pendingId, Date.now() + 60 * 60 * 1000);
+      }
+
+      res.writeHead(200, { ...CORS, 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ paid: !!paid }));
+    } catch(e) {
+      res.writeHead(500, { ...CORS, 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ paid: false }));
+    }
     return;
   }
 
-  // Génère l'aperçu (gratuit)
+  // GÃ©nÃ¨re l'aperÃ§u (gratuit)
   if (req.method === 'POST' && req.url === '/api/preview') {
     const body = await readBody(req);
     const { prompt } = JSON.parse(body.toString());
@@ -161,14 +199,14 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // Génère le verdict complet (payant)
+  // GÃ©nÃ¨re le verdict complet (payant)
   if (req.method === 'POST' && req.url === '/api/verdict') {
     const body = await readBody(req);
     const { prompt, pendingId } = JSON.parse(body.toString());
     const expiry = validTokens.get(pendingId);
     if (!expiry || Date.now() > expiry) {
       res.writeHead(403, { ...CORS, 'Content-Type': 'application/json' });
-      return res.end(JSON.stringify({ error: 'Paiement non vérifié' }));
+      return res.end(JSON.stringify({ error: 'Paiement non vÃ©rifiÃ©' }));
     }
     try {
       const response = await fetch('https://api.anthropic.com/v1/messages', {
